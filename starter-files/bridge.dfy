@@ -18,7 +18,8 @@ module Bridge {
 	predicate Valid(s:state) {
     //####CodeMarker1Begin#### 
 		// WRITE a specification here based on the problem definition in the handout
-		true
+		!(s.LightA.Green? && s.LightB.Green?) && s.W_A >=0 && s.W_B >=0 && 0<=s.Cross_Counter<=5 &&
+		(s.LightA.Red? && s.LightB.Red? ==> s.Cross_Counter == 0)
     //####CodeMarker1End####
 	}
 
@@ -37,7 +38,7 @@ module Bridge {
 	method Increment_W_A(s:state) returns (s':state)
     //####CodeMarker3Begin#### 
     requires Valid(s)
-    ensures Valid(s')
+    ensures Valid(s')  
     //####CodeMarker3End####
 	{
 		s' := s.(W_A := s.W_A + 1);
@@ -46,7 +47,7 @@ module Bridge {
 	method Increment_W_B(s:state) returns (s':state)
     //####CodeMarker4Begin#### 
     requires Valid(s)
-    ensures Valid(s')
+    ensures Valid(s') 
     //####CodeMarker4End####
 	{
 		s' := s.(W_B := s.W_B + 1);
@@ -54,8 +55,8 @@ module Bridge {
 
 	method Increment_Cross_Counter(s:state) returns (s':state)
     //####CodeMarker5Begin#### 
-    requires Valid(s)
-    ensures Valid(s')
+    requires Valid(s) && s.Cross_Counter <5 && (s.LightA.Green? || s.LightB.Green?)
+    ensures Valid(s') && s'.Cross_Counter == s.Cross_Counter + 1
     //####CodeMarker5End####
 	{
 		s' := s.(Cross_Counter := s.Cross_Counter + 1);
@@ -63,8 +64,9 @@ module Bridge {
 
 	method Reset_Cross_Counter(s:state) returns (s':state)
     //####CodeMarker6Begin#### 
-    requires Valid(s)
-    ensures Valid(s')
+    requires Valid(s) 
+    ensures Valid(s') && s'.Cross_Counter == 0
+	ensures s'.W_A == s.W_A && s'.W_B == s.W_B &&  (s'.LightA == s.LightA) &&  (s'.LightB == s.LightB)
     //####CodeMarker6End####
 	{
 		s' := s.(Cross_Counter := 0);
@@ -72,7 +74,7 @@ module Bridge {
 	
 	method Cross(s:state) returns (s':state)
     //####CodeMarker7Begin#### 
-    requires Valid(s)
+    requires Valid(s) && s.W_A > 0 && s.W_B > 0  && s.Cross_Counter <5 && (s.LightA.Green? || s.LightB.Green?)
     ensures Valid(s')
     //####CodeMarker7End####
 	{
@@ -88,8 +90,8 @@ module Bridge {
 
 	method Switch_Lights(s:state) returns (s':state)
     //####CodeMarker8Begin#### 
-    requires Valid(s)
-    ensures Valid(s')
+    requires Valid(s) && (s.LightA != s.LightB)
+    ensures Valid(s') && s'.W_A == s.W_A && s'.W_B == s.W_B && (s'.LightA != s'.LightB)
     //####CodeMarker8End####
 	{
 		s' := s;
@@ -107,7 +109,7 @@ module Bridge {
 	
 	method Tick(next:Next_Car, s:state) returns (s':state)
     //####CodeMarker9Begin#### 
-		requires Valid(s)
+		requires Valid(s) 
 		ensures Valid(s')
     //####CodeMarker9End####
 	{
