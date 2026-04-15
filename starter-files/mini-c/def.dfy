@@ -239,12 +239,13 @@ function EvalCommand(s:State, c:Command) : CResult
                         EvalCommand(State(s.fuel - 1, s.store, s.io), Concat(body, c)))
 
         case PrintS(str) => 
-            // TODO: Update this clause to have the correct semantics
-            Success(s.store, s.io)
-
+            Success(s.store, IO(s.io.in_public, s.io.in_secret, s.io.output + [str]))
         case PrintE(e) =>
-            // TODO: Update this clause to have the correct semantics
-            Success(s.store, s.io)
+            var value := EvalExpr(e, s.store);
+            (match value
+                case EFail          => Fail  
+                case ESuccess(I(i)) => Success(s.store, IO(s.io.in_public, s.io.in_secret, s.io.output + [Int2String(i)]))
+                case ESuccess(B(b)) => Success(s.store, IO(s.io.in_public, s.io.in_secret, s.io.output + [Bool2String(b)])))
 
         case GetInt(variable) =>    // variable := GetInt()
             // Get an integer from the outside world, which gives us an updated IO record
