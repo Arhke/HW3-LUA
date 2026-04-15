@@ -214,8 +214,15 @@ function EvalCommand(s:State, c:Command) : CResult
 //####CodeMarker1Begin#### 
 
         case IfThenElse(cond, ifTrue, ifFalse) => // if cond then { ifTrue } else { ifFalse }
-            // TODO: Update this clause to have the correct semantics
-            Success(s.store, s.io)
+            var value := EvalExpr(cond, s.store);
+            (match value
+                case EFail          => Fail  
+                case ESuccess(I(_)) => Fail 
+                case ESuccess(B(b)) =>
+                    if !b then 
+                        EvalCommand(s, ifFalse)
+                    else
+                        EvalCommand(s, ifTrue))
 
         case While(cond, body) =>
             // First evaluate the conditional expression
