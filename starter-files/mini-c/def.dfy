@@ -360,7 +360,7 @@ predicate CommandWellTyped(d:Declarations, c:Command) {
 
         case IfThenElse(cond, ifTrue, ifFalse) =>
             // TODO: Update this clause to perform the correct checks
-            true
+            ExprHasType(d, cond, TBool) && CommandWellTyped(d, ifTrue) && CommandWellTyped(d, ifFalse)
 
         case While(cond, body) =>
             // We only allow Boolean conditionals, and the body must be well typed
@@ -368,19 +368,25 @@ predicate CommandWellTyped(d:Declarations, c:Command) {
 
         case PrintS(str) => 
             // TODO: Update this clause to perform the correct checks
-            true
+            str is string
 
         case PrintE(e) => 
             // TODO: Update this clause to perform the correct checks
-            true
+            ExprHasType(d, e, TInt) || ExprHasType(d, e, TBool)
 
         case GetInt(variable) => 
             // TODO: Update this clause to perform the correct checks
-            true
+            if variable in d then
+                d[variable] == TInt
+            else 
+                false
 
         case GetSecretInt(variable) =>
             // TODO: Update this clause to perform the correct checks
-            true
+            if variable in d then
+                d[variable] == TInt
+            else 
+                false
 
 //####CodeMarker3End#### 
 }
