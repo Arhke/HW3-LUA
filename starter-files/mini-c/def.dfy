@@ -239,13 +239,13 @@ function EvalCommand(s:State, c:Command) : CResult
                         EvalCommand(State(s.fuel - 1, s.store, s.io), Concat(body, c)))
 
         case PrintS(str) => 
-            Success(s.store, IO(s.io.in_public, s.io.in_secret, s.io.output + [str]))
+            Success(s.store, s.io.(output := s.io.output + [str]))
         case PrintE(e) =>
             var value := EvalExpr(e, s.store);
             (match value
                 case EFail          => Fail  
-                case ESuccess(I(i)) => Success(s.store, IO(s.io.in_public, s.io.in_secret, s.io.output + [Int2String(i)]))
-                case ESuccess(B(b)) => Success(s.store, IO(s.io.in_public, s.io.in_secret, s.io.output + [Bool2String(b)])))
+                case ESuccess(I(i)) => Success(s.store, s.io.(output := s.io.output + [Int2String(i)]))
+                case ESuccess(B(b)) => Success(s.store, s.io.(output := s.io.output + [Bool2String(b)])))
 
         case GetInt(variable) =>    // variable := GetInt()
             // Get an integer from the outside world, which gives us an updated IO record
@@ -256,7 +256,8 @@ function EvalCommand(s:State, c:Command) : CResult
 
         case GetSecretInt(variable) =>    // variable := GetSecretInt()
             // TODO: Update this clause to have the correct semantics
-            Success(s.store, s.io)
+            var (i, io') := ReadInt(s.io);
+            Success(s.store[variable := I(i)], io')
 
 //####CodeMarker1End#### 
 }
