@@ -328,8 +328,12 @@ predicate ExprHasType(d:Declarations, e:Expr, t:Type) {
 //####CodeMarker2Begin#### 
 
         case BinaryOp(op, lhs, rhs) =>
-            if (op == Leq || op == Eq) then ExprHasType(d, lhs, TBool) && ExprHasType(d, rhs, TBool)
-            else ExprHasType(d, lhs, TInt) && ExprHasType(d, rhs, TInt)
+            if t == TInt then 
+            op != Eq && op != Leq && ExprHasType(d, lhs, TInt) && ExprHasType(d, rhs, TInt)
+            else 
+            (op == Eq || op == Leq) && ExprHasType(d, lhs, TInt) && ExprHasType(d, rhs, TInt)
+            // (ExprHasType(d, lhs, t) && ExprHasType(d, rhs, t)) 
+            // || ()
 //####CodeMarker2End#### 
 }
 
