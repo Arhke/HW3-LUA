@@ -33,14 +33,13 @@ predicate ExprHasSecType(d:SecDeclarations, e:Expr, t:SecType) {
         case Int(_)  => true
         case Var(v)  => 
             if v in d then 
-                // Does the declared type match the claimed type?
                 d[v] == t 
             else 
-                // This variable wasn't declared with a type!
                 false  
         case BinaryOp(op, left, right) =>
+            ExprHasSecType(d, left, t) && ExprHasSecType(d, right, t) 
             // TODO: Fill in this case
-            true
+            
     //####CodeMarker1End####
 }
 
