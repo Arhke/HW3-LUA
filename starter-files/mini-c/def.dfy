@@ -256,7 +256,7 @@ function EvalCommand(s:State, c:Command) : CResult
 
         case GetSecretInt(variable) =>    // variable := GetSecretInt()
             // TODO: Update this clause to have the correct semantics
-            var (i, io') := ReadInt(s.io);
+            var (i, io') := ReadSecretInt(s.io);
             Success(s.store[variable := I(i)], io')
 
 //####CodeMarker1End#### 
@@ -332,8 +332,6 @@ predicate ExprHasType(d:Declarations, e:Expr, t:Type) {
             op != Eq && op != Leq && ExprHasType(d, lhs, TInt) && ExprHasType(d, rhs, TInt)
             else 
             (op == Eq || op == Leq) && ExprHasType(d, lhs, TInt) && ExprHasType(d, rhs, TInt)
-            // (ExprHasType(d, lhs, t) && ExprHasType(d, rhs, t)) 
-            // || ()
 //####CodeMarker2End#### 
 }
 
