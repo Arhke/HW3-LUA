@@ -159,56 +159,58 @@ lemma NIexamples() {
     assert CommandHasSecType(d, getSecretIntCommand1, Low);
 }
 
-// //////////////////////////////////////////////////////////////////
-// //
-// //  Proof that our security type system ensures non-interference
-// //
-// //////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+//
+//  Proof that our security type system ensures non-interference
+//
+//////////////////////////////////////////////////////////////////
 
 
-// /*** First define some helper functions to abbreviate long expressions ***/
+/*** First define some helper functions to abbreviate long expressions ***/
 
-// // All variables declared in d as type t have the same value in s0 and s1
-// predicate VarsAgree(d:SecDeclarations, t:SecType, s0:Store, s1:Store) {
-//     forall variable :: 
-//         variable in d ==> 
-//             variable in s0 
-//             && variable in s1 
-//             && (d[variable] == t ==> s0[variable] == s1[variable])
-// }
+// All variables declared in d as type t have the same value in s0 and s1
+predicate VarsAgree(d:SecDeclarations, t:SecType, s0:Store, s1:Store) {
+    forall variable :: 
+        variable in d ==> 
+            variable in s0 
+            && variable in s1 
+            && (d[variable] == t ==> s0[variable] == s1[variable])
+}
 
-// // Decrement the fuel in s by 1
-// function DecrFuel(s:State) : State 
-//     requires s.fuel > 0
-// {
-//     s.(fuel := s.fuel - 1)
-// }
+// Decrement the fuel in s by 1
+function DecrFuel(s:State) : State 
+    requires s.fuel > 0
+{
+    s.(fuel := s.fuel - 1)
+}
 
-// /*** Now define some helper lemmas ***/
+/*** Now define some helper lemmas ***/
 
-// // Helper Lemma 1
-// lemma NonInterfenceTypeExpr(d:SecDeclarations, s0:Store, s1:Store, e:Expr, t:SecType)
-//     // If we successfully evaluate an expression from two different stores (s0 and s1)
-//     requires EvalExpr(e, s0).ESuccess?
-//     requires EvalExpr(e, s1).ESuccess?
-//     // And the expression has type t
-//     requires ExprHasSecType(d, e, t)
-//     // And the two states agree on the value of all variables of type t
-//     requires VarsAgree(d, t, s0, s1)
+// Helper Lemma 1
+lemma NonInterfenceTypeExpr(d:SecDeclarations, s0:Store, s1:Store, e:Expr, t:SecType)
+    // If we successfully evaluate an expression from two different stores (s0 and s1)
+    requires EvalExpr(e, s0).ESuccess?
+    requires EvalExpr(e, s1).ESuccess?
+    // And the expression has type t
+    requires ExprHasSecType(d, e, t)
+    // And the two states agree on the value of all variables of type t
+    requires VarsAgree(d, t, s0, s1)
     
-//     // Then the result of evaluating the expression is the same with both stores
-//     ensures  EvalExpr(e, s0) == EvalExpr(e, s1)
-// {
-//     //####CodeMarker3Begin####
-//     match e {
-//         case Bool(b) => 
-//         case Int(i)  => 
-//         case Var(v)  => 
-//         case BinaryOp(op, left, right) =>      
-//         // TODO: Update this case, so the proof goes through
-//     }
-//     //####CodeMarker3End####
-// }
+    // Then the result of evaluating the expression is the same with both stores
+    ensures  EvalExpr(e, s0) == EvalExpr(e, s1)
+{
+    //####CodeMarker3Begin####
+    match e {
+        case Bool(b) => 
+        case Int(i)  => 
+        case Var(v)  => 
+        case BinaryOp(op, left, right) => 
+        // TODO: Update this case, so the proof goes through
+            NonInterfenceTypeExpr(d, s0, s1, left, t);   
+            NonInterfenceTypeExpr(d, s0, s1, right, t);   
+    }
+    //####CodeMarker3End####
+}
 
 
 // // Helper Lemma 2
