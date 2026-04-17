@@ -81,11 +81,17 @@ predicate CommandHasSecTypeBasic(d:SecDeclarations, c:Command, t:SecType)
 
         case GetInt(variable) =>
             // TODO: Update this clause to perform the correct checks
-            t == Low
+            if variable in d && t == Low then 
+                d[variable] == Low
+            else 
+                false
 
         case GetSecretInt(variable) =>
             // TODO: Update this clause to perform the correct checks
-            t == High
+            if variable in d && t == High then 
+                d[variable] == High
+            else 
+                false
     //####CodeMarker2End####
 }
 
@@ -213,45 +219,49 @@ lemma NonInterfenceTypeExpr(d:SecDeclarations, s0:Store, s1:Store, e:Expr, t:Sec
 }
 
 
-// // Helper Lemma 2
-// lemma HighCommandPreservesLowVars(d:SecDeclarations, c:Command, s:State, store':Store) 
-//     // If evaluating the command from state s produces store s'
-//     requires EvalCommand(s, c).Success? && EvalCommand(s, c).s == store'
-//     // and the command is well-typed at High
-//     requires CommandHasSecType(d, c, High)
-//     decreases s.fuel, c
-//     // Then s' has all the same variables that s.store did, 
-//     // and all low variables in store' have the same value they did in s.
-//     // In other words, the high command doesn't affect any of the low variables.
-//     ensures  forall v :: 
-//                 v in s.store.Keys ==> 
-//                     v in store'.Keys 
-//                     && (v in d && d[v].Low? ==> store'[v] == s.store[v])
-// {
-//     //####CodeMarker4Begin####
-//     match c {
-//         case Noop =>  // Automatic
-//         case Assign(variable, e) => // Automatic       
-//         case Concat(c0, c1) =>
-//             var result := EvalCommand(s, c0);
-//             // Apply the induction hypothesis to the first command
-//             HighCommandPreservesLowVars(d, c0, s, result.s);
-//             // Apply the induction hypothesis to the second command
-//             HighCommandPreservesLowVars(d, c1, State(s.fuel, result.s, result.io), store');
-//         case IfThenElse(cond, ifTrue, ifFalse) => 
-//             // TODO: Update this case, so the proof goes through
-//         case While(cond, body) =>
-//             var b := EvalExpr(cond, s.store).v.b;
-//             if b {
-//                 HighCommandPreservesLowVars(d, Concat(body, c), DecrFuel(s), store');
-//             }
-//         case PrintS(str) => // Automatic
-//         case PrintE(e) => // Automatic
-//         case GetInt(variable) => // Automatic
-//         case GetSecretInt(variable) => // Automatic
-//     }    
-//      //####CodeMarker4End####    
-// }
+// Helper Lemma 2
+lemma HighCommandPreservesLowVars(d:SecDeclarations, c:Command, s:State, store':Store) 
+    // If evaluating the command from state s produces store s'
+    requires EvalCommand(s, c).Success? && EvalCommand(s, c).s == store'
+    // and the command is well-typed at High
+    requires CommandHasSecType(d, c, High)
+    decreases s.fuel, c
+    // Then s' has all the same variables that s.store did, 
+    // and all low variables in store' have the same value they did in s.
+    // In other words, the high command doesn't affect any of the low variables.
+    ensures  forall v :: 
+                v in s.store.Keys ==> 
+                    v in store'.Keys 
+                    && (v in d && d[v].Low? ==> store'[v] == s.store[v])
+{
+    //####CodeMarker4Begin####
+    match c {
+        case Noop =>  // Automatic
+        case Assign(variable, e) => // Automatic       
+        case Concat(c0, c1) =>
+            var result := EvalCommand(s, c0);
+            // Apply the induction hypothesis to the first command
+            HighCommandPreservesLowVars(d, c0, s, result.s);
+            // Apply the induction hypothesis to the second command
+            HighCommandPreservesLowVars(d, c1, State(s.fuel, result.s, result.io), store');
+        case IfThenElse(cond, ifTrue, ifFalse) => 
+            if EvalExpr(cond, s.store).v.b {
+                HighCommandPreservesLowVars(d, ifTrue, s, store'); 
+            }else {
+                HighCommandPreservesLowVars(d, ifFalse, s, store'); 
+            }
+        case While(cond, body) =>
+            var b := EvalExpr(cond, s.store).v.b;
+            if b {
+                HighCommandPreservesLowVars(d, Concat(body, c), DecrFuel(s), store');
+            }
+        case PrintS(str) => // Automatic
+        case PrintE(e) => // Automatic
+        case GetInt(variable) => // Automatic
+        case GetSecretInt(variable) => // Automatic
+    }    
+     //####CodeMarker4End####    
+}
 
 
 // // Helper Lemma 3
