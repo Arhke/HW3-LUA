@@ -107,57 +107,57 @@ predicate CommandHasSecType(d:SecDeclarations, c:Command, t:SecType)
 }
 
 
-// lemma NIexamples() {
-//     // Same command as before
-//     var x := Variable("x");
-//     var y := Variable("y");
-//     var cond := BinaryOp(Eq, Var(x), Int(1));
-//     var ifTrue := Assign(y, Int(1));
-//     var ifFalse := Assign(y, Int(0));
-//     var ite := IfThenElse(cond, ifTrue, ifFalse);   // ite says "if x = 1 { y := 1; } else { y := 0; }
+lemma NIexamples() {
+    // Same command as before
+    var x := Variable("x");
+    var y := Variable("y");
+    var cond := BinaryOp(Eq, Var(x), Int(1));
+    var ifTrue := Assign(y, Int(1));
+    var ifFalse := Assign(y, Int(0));
+    var ite := IfThenElse(cond, ifTrue, ifFalse);   // ite says "if x = 1 { y := 1; } else { y := 0; }
 
-//     // Example: When both x and y are Low,
-//     //            then ite is well typed (at Low)
-//     var d := map[x := Low, y:= Low];
-//     assert ExprHasSecType(d, Var(x), Low);
-//     assert ExprHasSecType(d, cond, Low);
-//     assert CommandHasSecType(d, ite, Low);
+    // Example: When both x and y are Low,
+    //            then ite is well typed (at Low)
+    var d := map[x := Low, y:= Low];
+    assert ExprHasSecType(d, Var(x), Low);
+    assert ExprHasSecType(d, cond, Low);
+    assert CommandHasSecType(d, ite, Low);
 
-//     // Example: When both x and y are High,
-//     //            then ite is well typed (at High)
-//     d := map[x := High, y:= High];
-//     assert ExprHasSecType(d, cond, High);
-//     assert CommandHasSecType(d, ite, High);
+    // Example: When both x and y are High,
+    //            then ite is well typed (at High)
+    d := map[x := High, y:= High];
+    assert ExprHasSecType(d, cond, High);
+    assert CommandHasSecType(d, ite, High);
 
-//     // Example: When x is Low and y is High,
-//     //            then ite is well typed (at Low),
-//     //            thanks to our low-command typing rule
-//     d := map[x := Low, y:= High];
-//     assert ExprHasSecType(d, cond, Low);
-//     assert CommandHasSecType(d, ite, Low);
+    // Example: When x is Low and y is High,
+    //            then ite is well typed (at Low),
+    //            thanks to our low-command typing rule
+    d := map[x := Low, y:= High];
+    assert ExprHasSecType(d, cond, Low);
+    assert CommandHasSecType(d, ite, Low);
 
-//     // Example: PrintS should be Low only
-//     var printSCommand := PrintS("Hello");
-//     assert CommandHasSecType(d, printSCommand, Low);
-//     assert !CommandHasSecType(d, printSCommand, High);
+    // Example: PrintS should be Low only
+    var printSCommand := PrintS("Hello");
+    assert CommandHasSecType(d, printSCommand, Low);
+    assert !CommandHasSecType(d, printSCommand, High);
 
-//     // Example: PrintE should work only on Low
-//     d := map[x := High, y:= Low];
-//     var printECommand2 := PrintE(Var(y));
-//     assert CommandHasSecType(d, printECommand2, Low);
-//     assert !CommandHasSecType(d, printECommand2, High);
+    // Example: PrintE should work only on Low
+    d := map[x := High, y:= Low];
+    var printECommand2 := PrintE(Var(y));
+    assert CommandHasSecType(d, printECommand2, Low);
+    assert !CommandHasSecType(d, printECommand2, High);
 
-//     // Example: Y is a Low variable. Low should pass but High should fail
-//     var getIntCommand2 := GetInt(y);
-//     assert CommandHasSecType(d, getIntCommand2, Low);
-//     assert !CommandHasSecType(d, getIntCommand2, High);
+    // Example: Y is a Low variable. Low should pass but High should fail
+    var getIntCommand2 := GetInt(y);
+    assert CommandHasSecType(d, getIntCommand2, Low);
+    assert !CommandHasSecType(d, getIntCommand2, High);
 
-//     // Example: X is High variable. High should pass via the basic rules, 
-//     // but Low should pass too, thanks to the CMD-LWR rule 
-//     var getSecretIntCommand1 := GetSecretInt(x);
-//     assert CommandHasSecType(d, getSecretIntCommand1, High);
-//     assert CommandHasSecType(d, getSecretIntCommand1, Low);
-// }
+    // Example: X is High variable. High should pass via the basic rules, 
+    // but Low should pass too, thanks to the CMD-LWR rule 
+    var getSecretIntCommand1 := GetSecretInt(x);
+    assert CommandHasSecType(d, getSecretIntCommand1, High);
+    assert CommandHasSecType(d, getSecretIntCommand1, Low);
+}
 
 // //////////////////////////////////////////////////////////////////
 // //
