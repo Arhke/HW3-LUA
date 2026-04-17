@@ -309,111 +309,136 @@ lemma HighCommandPreservesPubIO(d:SecDeclarations, c:Command, s:State, r:CResult
 }
 
 
-// // This is where most of the work of proving non-interference happens.
-// // It is an inductive argument over the structure of the program (c).
-// lemma NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:State, s1:State, r0:CResult, r1:CResult) 
-//     // 0) The results passed in (r0 and r1) match the actual result of evaluating the command, starting from s0 and from s1 respectively
-//     requires EvalCommand(s0, c) == r0
-//     requires EvalCommand(s1, c) == r1
+// This is where most of the work of proving non-interference happens.
+// It is an inductive argument over the structure of the program (c).
+lemma NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:State, s1:State, r0:CResult, r1:CResult) 
+    // 0) The results passed in (r0 and r1) match the actual result of evaluating the command, starting from s0 and from s1 respectively
+    requires EvalCommand(s0, c) == r0
+    requires EvalCommand(s1, c) == r1
 
-//     // 1) Evaluation was successful
-//     requires r0.Success?
-//     requires r1.Success?
+    // 1) Evaluation was successful
+    requires r0.Success?
+    requires r1.Success?
 
-//     // 1a) Initial IO states agree on the public inputs and the outputs
-//     requires s0.io.in_public == s1.io.in_public && s0.io.output == s1.io.output
+    // 1a) Initial IO states agree on the public inputs and the outputs
+    requires s0.io.in_public == s1.io.in_public && s0.io.output == s1.io.output
 
-//     // 2) The command is well typed w.r.t. our security type system
-//     requires CommandHasSecType(d, c, t)
+    // 2) The command is well typed w.r.t. our security type system
+    requires CommandHasSecType(d, c, t)
     
-//     // 3) The initial stores agree on the values of all Low variables
-//     requires VarsAgree(d, Low, s0.store, s1.store)
+    // 3) The initial stores agree on the values of all Low variables
+    requires VarsAgree(d, Low, s0.store, s1.store)
 
-//     decreases s0.fuel, s1.fuel, c // Helps Dafny see that our recursive argument does eventually terminate
+    decreases s0.fuel, s1.fuel, c // Helps Dafny see that our recursive argument does eventually terminate
 
-//     // Some additional invariants we'll need for our proof:
-//     //   a) After we execute the command, the value of the low variables stays the same in both stores
-//     ensures VarsAgree(d, Low, r0.s, r1.s)
+    // Some additional invariants we'll need for our proof:
+    //   a) After we execute the command, the value of the low variables stays the same in both stores
+    ensures VarsAgree(d, Low, r0.s, r1.s)
 
-//     //   b) The public inputs we receive are the same in both executions
-//     ensures r0.io.in_public == r1.io.in_public
+    //   b) The public inputs we receive are the same in both executions
+    ensures r0.io.in_public == r1.io.in_public
  
-//     // Conclusion: The output of both executions are identical
-//     //             (note that this holds even when the high variables differ!)
-//     ensures  r0.io.output == r1.io.output
-// {
-//     //####CodeMarker6Begin####
-//     match c {
-//         case Noop => // Automatic
-//         case Assign(variable, e) =>           
-//             // TODO: Update this case, so the proof goes through
-//         case Concat(c0, c1) =>
-//             var result0 := EvalCommand(s0, c0);
-//             var result1 := EvalCommand(s1, c0);
-//             if CommandHasSecTypeBasic(d, c, t) {
-//                 var s0' := State(s0.fuel, result0.s, result0.io);
-//                 var s1' := State(s1.fuel, result1.s, result1.io);
-//                 NonInterferenceTypesInternal(d, c0, t, s0, s1, result0, result1);                 
-//                 NonInterferenceTypesInternal(d, c1, t, s0', s1', r0, r1);
-//             } else {
-//                 assert t.Low? && CommandHasSecTypeBasic(d, c, High);
-//                 HighCommandPreservesLowVars(d, c, s0, r0.s);
-//                 HighCommandPreservesLowVars(d, c, s1, r1.s);
-//                 var s0' := State(s0.fuel, result0.s, result0.io);
-//                 var s1' := State(s1.fuel, result1.s, result1.io);
-//                 NonInterferenceTypesInternal(d, c0, High, s0, s1, result0, result1); 
-//                 NonInterferenceTypesInternal(d, c1, High, s0', s1', r0, r1);
-//             }
-//         case IfThenElse(cond, ifTrue, ifFalse) =>
-//             if t.Low? {
-//                 if CommandHasSecTypeBasic(d, c, t) {
-//                     NonInterfenceTypeExpr(d, s0.store, s1.store, cond, t);
-//                     if EvalExpr(cond, s0.store).v.b {
-//                         NonInterferenceTypesInternal(d, ifTrue, t, s0, s1, r0, r1);
-//                     } else {
-//                         NonInterferenceTypesInternal(d, ifFalse, t, s0, s1,r0, r1);
-//                     }
-//                 } else {
-//                     assert CommandHasSecTypeBasic(d, c, High);
-//                     HighCommandPreservesLowVars(d, c, s0, r0.s);
-//                     HighCommandPreservesLowVars(d, c, s1, r1.s);   
-//                     HighCommandPreservesPubIO(d, c, s0, r0);
-//                     HighCommandPreservesPubIO(d, c, s1, r1); 
-//                 }
-//             } else {
-//                 HighCommandPreservesLowVars(d, c, s0, r0.s);
-//                 HighCommandPreservesLowVars(d, c, s1, r1.s);
-//                 HighCommandPreservesPubIO(d, c, s0, r0);
-//                 HighCommandPreservesPubIO(d, c, s1, r1);
-//             }
-//         case While(cond, body) =>
-//             if t.Low? {
-//                 if CommandHasSecTypeBasic(d, c, t) {
-//                     NonInterfenceTypeExpr(d, s0.store, s1.store, cond, t);                
-//                     if EvalExpr(cond, s0.store).v.b {
-//                         NonInterferenceTypesInternal(d, Concat(body, c), t, DecrFuel(s0), DecrFuel(s1), r0, r1);
-//                     }
-//                 } else {
-//                     assert CommandHasSecTypeBasic(d, c, High);
-//                     HighCommandPreservesLowVars(d, c, s0, r0.s);
-//                     HighCommandPreservesLowVars(d, c, s1, r1.s);
-//                     HighCommandPreservesPubIO(d, c, s0, r0);
-//                     HighCommandPreservesPubIO(d, c, s1, r1);
-//                 }
-//             } else {
-//                 HighCommandPreservesLowVars(d, c, s0, r0.s);
-//                 HighCommandPreservesLowVars(d, c, s1, r1.s);
-//                 HighCommandPreservesPubIO(d, c, s0, r0);
-//                 HighCommandPreservesPubIO(d, c, s1, r1);
-//             }
-//         case PrintS(str) => // Automatic 
-//         case PrintE(e) =>
-//             // TODO: Update this case, so the proof goes through
-//         case GetInt(variable) => // Automatic
-//         case GetSecretInt(variable) => // Automatic 
-//     }
-//     //####CodeMarker6End####
-// }
+    // Conclusion: The output of both executions are identical
+    //             (note that this holds even when the high variables differ!)
+    ensures  r0.io.output == r1.io.output
+{
+    //####CodeMarker6Begin####
+    match c {
+        case Noop => // Automatic
+        case Assign(variable, e) =>
+           
+                
+            
+            if ExprHasSecType(d, e, Low) && d[variable] == Low {
+                NonInterfenceTypeExpr(d, s0.store, s1.store, e, Low);
+            }
+
+            // NonInterfenceTypeExpr(d, s0.store, s1.store, e, t);
+            // TODO: Update this case, so the proof goes through
+        case Concat(c0, c1) =>
+            var result0 := EvalCommand(s0, c0);
+            var result1 := EvalCommand(s1, c0);
+            if CommandHasSecTypeBasic(d, c, t) {
+                var s0' := State(s0.fuel, result0.s, result0.io);
+                var s1' := State(s1.fuel, result1.s, result1.io);
+                NonInterferenceTypesInternal(d, c0, t, s0, s1, result0, result1);                 
+                NonInterferenceTypesInternal(d, c1, t, s0', s1', r0, r1);
+            } else {
+                assert t.Low? && CommandHasSecTypeBasic(d, c, High);
+                HighCommandPreservesLowVars(d, c, s0, r0.s);
+                HighCommandPreservesLowVars(d, c, s1, r1.s);
+                var s0' := State(s0.fuel, result0.s, result0.io);
+                var s1' := State(s1.fuel, result1.s, result1.io);
+                NonInterferenceTypesInternal(d, c0, High, s0, s1, result0, result1); 
+                NonInterferenceTypesInternal(d, c1, High, s0', s1', r0, r1);
+            }
+        case IfThenElse(cond, ifTrue, ifFalse) =>
+            if t.Low? {
+                if CommandHasSecTypeBasic(d, c, t) {
+                    NonInterfenceTypeExpr(d, s0.store, s1.store, cond, t);
+                    if EvalExpr(cond, s0.store).v.b {
+                        NonInterferenceTypesInternal(d, ifTrue, t, s0, s1, r0, r1);
+                    } else {
+                        NonInterferenceTypesInternal(d, ifFalse, t, s0, s1,r0, r1);
+                    }
+                } else {
+                    assert CommandHasSecTypeBasic(d, c, High);
+                    HighCommandPreservesLowVars(d, c, s0, r0.s);
+                    HighCommandPreservesLowVars(d, c, s1, r1.s);   
+                    HighCommandPreservesPubIO(d, c, s0, r0);
+                    HighCommandPreservesPubIO(d, c, s1, r1); 
+                }
+            } else {
+                HighCommandPreservesLowVars(d, c, s0, r0.s);
+                HighCommandPreservesLowVars(d, c, s1, r1.s);
+                HighCommandPreservesPubIO(d, c, s0, r0);
+                HighCommandPreservesPubIO(d, c, s1, r1);
+            }
+        case While(cond, body) =>
+            if t.Low? {
+                if CommandHasSecTypeBasic(d, c, t) {
+                    NonInterfenceTypeExpr(d, s0.store, s1.store, cond, t);                
+                    if EvalExpr(cond, s0.store).v.b {
+                        NonInterferenceTypesInternal(d, Concat(body, c), t, DecrFuel(s0), DecrFuel(s1), r0, r1);
+                    }
+                } else {
+                    assert CommandHasSecTypeBasic(d, c, High);
+                    HighCommandPreservesLowVars(d, c, s0, r0.s);
+                    HighCommandPreservesLowVars(d, c, s1, r1.s);
+                    HighCommandPreservesPubIO(d, c, s0, r0);
+                    HighCommandPreservesPubIO(d, c, s1, r1);
+                }
+            } else {
+                HighCommandPreservesLowVars(d, c, s0, r0.s);
+                HighCommandPreservesLowVars(d, c, s1, r1.s);
+                HighCommandPreservesPubIO(d, c, s0, r0);
+                HighCommandPreservesPubIO(d, c, s1, r1);
+            }
+        case PrintS(str) => // Automatic 
+
+        case PrintE(e) =>
+            assume{:axiom}(false);
+
+        //.v.b
+            // var value := EvalExpr(e, s0.store);
+            // match value {
+            //     case EFail          => 
+            //     case ESuccess(I(i)) => //NonInterferenceTypesInternal(d, PrintS(Int2String(i)), t, DecrFuel(s0), DecrFuel(s1), r0, r1);
+            //     case ESuccess(B(b)) => 
+            //         if b {
+            //         } else {
+            //         }
+            // }
+            // if t.Low? {
+            //     NonInterfenceTypeExpr(d, s0.store, s1.store, e, t);
+            // }
+
+            // TODO: Update this case, so the proof goes through
+        case GetInt(variable) => // Automatic
+        case GetSecretInt(variable) => // Automatic 
+    }
+    //####CodeMarker6End####
+}
 
 
 
