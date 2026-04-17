@@ -417,7 +417,7 @@ lemma NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:S
         case PrintS(str) => // Automatic 
 
         case PrintE(e) =>
-            assume{:axiom}(false);
+            // assume{:axiom}(false);
 
         //.v.b
             // var value := EvalExpr(e, s0.store);
@@ -429,9 +429,12 @@ lemma NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:S
             //         } else {
             //         }
             // }
-            // if t.Low? {
-            //     NonInterfenceTypeExpr(d, s0.store, s1.store, e, t);
-            // }
+            if t.Low? && ExprHasSecType(d, e, Low) {
+                NonInterfenceTypeExpr(d, s0.store, s1.store, e, Low);
+            }else{
+                assume{:axiom}(false);
+
+            }
 
             // TODO: Update this case, so the proof goes through
         case GetInt(variable) => // Automatic
