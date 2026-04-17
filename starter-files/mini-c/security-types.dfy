@@ -77,7 +77,7 @@ predicate CommandHasSecTypeBasic(d:SecDeclarations, c:Command, t:SecType)
             t == Low
         case PrintE(e) =>
             // TODO: Update this clause to perform the correct checks
-            ExprHasSecType(d, e, t)
+            ExprHasSecType(d, e, Low) && t==Low
 
         case GetInt(variable) =>
             // TODO: Update this clause to perform the correct checks
@@ -264,42 +264,49 @@ lemma HighCommandPreservesLowVars(d:SecDeclarations, c:Command, s:State, store':
 }
 
 
-// // Helper Lemma 3
-// lemma HighCommandPreservesPubIO(d:SecDeclarations, c:Command, s:State, r:CResult) 
-//     // If evaluating the command succeeds 
-//     requires EvalCommand(s, c) == r && r.Success?
-//     // and the command is well-typed at High
-//     requires CommandHasSecType(d, c, High)
-//     decreases s.fuel, c
-//     // Then no public values are read during the command's execution
-//     ensures  r.io.in_public == s.io.in_public
-//     // And nothing is written to the output
-//     ensures  r.io.output == s.io.output
-// {
-//     //####CodeMarker5Begin####
-//     match c {
-//         case Noop => // Automatic
-//         case Assign(variable, e) => // Automatic
-//         case Concat(c0, c1) =>
-//             var result := EvalCommand(s, c0);
-//             // Apply the induction hypothesis to the first command
-//             HighCommandPreservesPubIO(d, c0, s, result);
-//             // Apply the induction hypothesis to the second command
-//             HighCommandPreservesPubIO(d, c1, State(s.fuel, result.s, result.io), r);
-//         case IfThenElse(cond, ifTrue, ifFalse) => 
-//             // TODO: Update this case, so the proof goes through
-//         case While(cond, body) =>
-//             var b := EvalExpr(cond, s.store).v.b;
-//             if b {
-//                 HighCommandPreservesPubIO(d, Concat(body, c), DecrFuel(s), r);
-//             }
-//         case PrintS(str) => // Automatic 
-//         case PrintE(e) => // Automatic 
-//         case GetInt(variable) => // Automatic
-//         case GetSecretInt(variable) => // Automatic
-//     }
-//     //####CodeMarker5End####      
-// }
+// Helper Lemma 3
+lemma HighCommandPreservesPubIO(d:SecDeclarations, c:Command, s:State, r:CResult) 
+    // If evaluating the command succeeds 
+    requires EvalCommand(s, c) == r && r.Success?
+    // and the command is well-typed at High
+    requires CommandHasSecType(d, c, High)
+    decreases s.fuel, c
+    // Then no public values are read during the command's execution
+    ensures  r.io.in_public == s.io.in_public
+    // And nothing is written to the output
+    ensures  r.io.output == s.io.output
+{
+    //####CodeMarker5Begin####
+    match c {
+        case Noop => // Automatic
+        case Assign(variable, e) => // Automatic
+        case Concat(c0, c1) =>
+            var result := EvalCommand(s, c0);
+            // Apply the induction hypothesis to the first command
+            HighCommandPreservesPubIO(d, c0, s, result);
+            // Apply the induction hypothesis to the second command
+            HighCommandPreservesPubIO(d, c1, State(s.fuel, result.s, result.io), r);
+        case IfThenElse(cond, ifTrue, ifFalse) => 
+            // TODO: Update this case, so the proof goes through
+            var b := EvalExpr(cond, s.store).v.b;
+            if (b) {
+                HighCommandPreservesPubIO(d, ifTrue, s, r);
+            }else {
+                HighCommandPreservesPubIO(d, ifFalse, s, r);
+
+            }
+        case While(cond, body) =>
+            var b := EvalExpr(cond, s.store).v.b;
+            if b {
+                HighCommandPreservesPubIO(d, Concat(body, c), DecrFuel(s), r);
+            }
+        case PrintS(str) => // Automatic 
+        case PrintE(e) => // Automatic 
+        case GetInt(variable) => // Automatic
+        case GetSecretInt(variable) => // Automatic
+    }
+    //####CodeMarker5End####      
+}
 
 
 // // This is where most of the work of proving non-interference happens.
