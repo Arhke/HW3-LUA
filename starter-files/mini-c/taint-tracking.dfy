@@ -42,8 +42,36 @@ function EvalExprTaint(d:Declarations, s:TaintState, e:Expr, t:Type) : (tv:Taint
         case Int(i)  => TV(false, I(i))     // Constants are not tainted
         case Var(v)  => TV(s.var_map[v], s.store[v])
         case BinaryOp(op, lhs, rhs) => 
+
             // TODO: Fill this case in properly
-            TV(true, B(false))
+            // match op {
+            //     case Plus | Sub | Times | Leq | Eq =>
+            //         var tv_l := EvalExprTaint(d, s, lhs, TInt);
+            //         var tv_r := EvalExprTaint(d, s, rhs, TInt);
+            //         var tainted := tv_l.tainted || tv_r.tainted;
+
+            //         match EvalExpr(e, s.store)
+            //             case EFail => TV(tainted, I(0)) 
+            //             case ESuccess(v) => TV(tainted, v)
+            // }
+            match op {
+                case Plus | Sub | Times | Leq | Eq =>   
+                    //WellTypedExprSuccess(d, s.store, lhs, TInt);
+                    //WellTypedExprSuccess(d, s.store, rhs, TInt); 
+
+                    var tv_l := EvalExprTaint(d, s, lhs, TInt);
+                    var tv_r := EvalExprTaint(d, s, rhs, TInt);
+                    var tainted :=
+                        if op == Times && ((tv_l.v == I(0) && !tv_l.tainted) || (tv_r.v == I(0) && !tv_r.tainted)) then
+                                    false
+                        else
+                            tv_l.tainted || tv_r.tainted;
+
+                        match EvalExpr(e, s.store)
+                            case EFail => TV(tainted, I(0)) 
+                            case ESuccess(v) => TV(tainted, v)
+            }
+
     //####CodeMarker1End####
 }
 
@@ -153,7 +181,17 @@ function EvalCommandTaint(d:Declarations, s:TaintState, c:Command) : (t:TResult)
 
         case IfThenElse(cond, ifTrue, ifFalse) =>
             // TODO: Fill this case in properly
-            TSuccess(s)
+            var TV(taint, B(b))  := EvalExprTaint(d, s, cond, TBool);
+            var new_s := s.(pc_tainted := taint || s.pc_tainted );
+            var result := if b then 
+                EvalCommandTaint(d,new_s, ifTrue)
+            else
+                EvalCommandTaint(d,new_s, ifFalse);
+            (match result
+                case TTimeout => TTimeout
+                case TLeak => TLeak
+                case TSuccess(s') => TSuccess(s'.(pc_tainted :=s.pc_tainted))
+            )
 
         case While(cond, body) =>
             // First evaluate the conditional expression
@@ -174,11 +212,22 @@ function EvalCommandTaint(d:Declarations, s:TaintState, c:Command) : (t:TResult)
 
         case PrintS(str) =>
             // TODO: Fill this case in properly
-            TSuccess(s)
+            if s.pc_tainted then
+                TLeak
+            else
+                var new_io := s.io.(output := s.io.output + [str]);
+                TSuccess(s.(io := new_io))
+
 
         case PrintE(e) =>
             // TODO: Fill this case in properly
-            TSuccess(s)
+            var t := if EvalExpr(e, s.store).v.I? then TInt else TBool;
+            var TV(taint, value) := EvalExprTaint(d, s, e, t);
+            if taint || s.pc_tainted then TLeak
+            else 
+                var new_str := if value.I? then Int2String(value.i) else Bool2String(value.b);
+                var new_io := s.io.(output := s.io.output + [new_str]);          
+                TSuccess(s.(io := new_io))
                 
         case GetInt(variable) =>
             if s.pc_tainted then
@@ -209,6 +258,7 @@ function EvalCommandTaint(d:Declarations, s:TaintState, c:Command) : (t:TResult)
                 // Update the taint state to indicate that this variable is now tainted
                 var new_s := UpdateVarTaint(s, variable, true);         
                 TSuccess(TaintState(s.fuel, new_store,  io', new_s.pc_tainted, new_s.var_map))
+
     //####CodeMarker2End####
 }
 
@@ -296,6 +346,11 @@ lemma NonInterfenceExpr(d:Declarations, s0:TaintState, s1:TaintState, e:Expr, t:
         case Var(v)  => 
         case BinaryOp(op, lhs, rhs) =>
         // TODO: Update this case, so the proof goes through 
+            assert ExprHasType(d, lhs, TInt);
+            assert ExprHasType(d, rhs, TInt);
+            NonInterfenceExpr(d, s0, s1, lhs, TInt);
+            NonInterfenceExpr(d, s0, s1, rhs, TInt);
+
     }
     //####CodeMarker3End####
 }
@@ -333,6 +388,15 @@ lemma TaintedPcPreservesLowVarsPubIO(d:Declarations, s:TaintState, c:Command, r:
 
         case IfThenElse(cond, ifTrue, ifFalse) =>
             // TODO: Fill this case in properly
+            var TV(taint, B(b)) := EvalExprTaint(d, s, cond, TBool);
+            if b {
+                var result := EvalCommandTaint(d, UpdatePCTaint(s, true), ifTrue);
+                TaintedPcPreservesLowVarsPubIO(d, UpdatePCTaint(s, true), ifTrue, result);
+            } else {
+                var result := EvalCommandTaint(d, UpdatePCTaint(s, true), ifFalse);
+                TaintedPcPreservesLowVarsPubIO(d, UpdatePCTaint(s, true), ifFalse, result);
+
+            }
 
         case While(cond, body) =>             
             var TV(taint, B(b)) := EvalExprTaint(d, s, cond, TBool);
@@ -431,8 +495,24 @@ lemma NonInterferenceInternal(d:Declarations,
 
             if !taint0 {
                 // TODO: Fill this case in properly
+                assert b0 == b1;
+                if b0 {
+                    var result0 := EvalCommandTaint(d, new_s0, ifTrue);
+                    var result1 := EvalCommandTaint(d, new_s1, ifTrue);
+                    NonInterferenceInternal(d, new_s0, new_s1, ifTrue, result0, result1);
+                } else{
+                    var result0 := EvalCommandTaint(d, new_s0, ifFalse);
+                    var result1 := EvalCommandTaint(d, new_s1, ifFalse);
+                   NonInterferenceInternal(d, new_s0, new_s1, ifFalse, result0, result1); 
+                }
             } else {                
                 // TODO: Fill this case in properly
+                var c0 := if b0 then ifTrue else ifFalse;
+                var c1 := if b1 then ifTrue else ifFalse;
+                var result0 := EvalCommandTaint(d, new_s0, c0);
+                var result1 := EvalCommandTaint(d, new_s1, c1);
+                TaintedPcPreservesLowVarsPubIO(d, new_s0, c0, result0);
+                TaintedPcPreservesLowVarsPubIO(d, new_s1, c1, result1);
             }
         case While(cond, body) => 
             NonInterfenceExpr(d, s0, s1, cond, TBool);
@@ -476,6 +556,11 @@ lemma NonInterferenceInternal(d:Declarations,
         case PrintS(str) => // automatic
         case PrintE(e) => 
             // TODO: Fill this case in properly
+            if ExprHasType(d, e, TInt) {
+                NonInterfenceExpr(d, s0, s1, e, TInt);
+            } else {
+                NonInterfenceExpr(d, s0, s1, e, TBool);
+            }
 
         case GetInt(variable) => // automatic
         case GetSecretInt(variable) => // automatic
