@@ -311,7 +311,7 @@ lemma HighCommandPreservesPubIO(d:SecDeclarations, c:Command, s:State, r:CResult
 
 // This is where most of the work of proving non-interference happens.
 // It is an inductive argument over the structure of the program (c).
-lemma {:isolate_assertions} NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:State, s1:State, r0:CResult, r1:CResult) 
+lemma NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:State, s1:State, r0:CResult, r1:CResult) 
     // 0) The results passed in (r0 and r1) match the actual result of evaluating the command, starting from s0 and from s1 respectively
     requires EvalCommand(s0, c) == r0
     requires EvalCommand(s1, c) == r1
@@ -347,7 +347,7 @@ lemma {:isolate_assertions} NonInterferenceTypesInternal(d:SecDeclarations, c:Co
         case Noop => // Automatic
         case Assign(variable, e) =>
             if ExprHasSecType(d, e, Low) && d[variable] == Low {
-                NonInterfenceTypeExpr(d, s0.store, s1.store, e, Low);
+                NonInterfenceTypeExpr(d, s0.store, s1.store, e, t);
             }
 
             // NonInterfenceTypeExpr(d, s0.store, s1.store, e, t);
@@ -414,14 +414,23 @@ lemma {:isolate_assertions} NonInterferenceTypesInternal(d:SecDeclarations, c:Co
         case PrintS(str) => // Automatic 
 
         case PrintE(e) =>
-            if t.Low? && ExprHasSecType(d, e, Low) {
-                NonInterfenceTypeExpr(d, s0.store, s1.store, e, Low);
+            var value := EvalExpr(e, s0.store);
+            match value {
+                case EFail          => 
+                case ESuccess(I(i)) => 
+                    if t.Low? && ExprHasSecType(d, e, Low) {
+                        NonInterfenceTypeExpr(d, s0.store, s1.store, e, Low);
+                    }
+                case ESuccess(B(b)) => 
+                    if t.Low? && ExprHasSecType(d, e, Low) {
+                        NonInterfenceTypeExpr(d, s0.store, s1.store, e, Low);
+                    }
             }
-            else if t.Low? {
-                assert ExprHasSecType(d, e, High);
-                NonInterfenceTypeExpr(d, s0.store, s1.store, e, High);
-            }
-
+            
+            // else if t.Low? {
+            //     assert ExprHasSecType(d, e, High);
+            //     NonInterfenceTypeExpr(d, s0.store, s1.store, e, High);
+            // }
             // TODO: Update this case, so the proof goes through
         case GetInt(variable) => // Automatic
         case GetSecretInt(variable) => // Automatic 
@@ -441,27 +450,27 @@ lemma {:isolate_assertions} NonInterferenceTypesInternal(d:SecDeclarations, c:Co
 // // The signature for this lemma is all a human
 // // reviewer would need to read.  All of the proof
 // // above is mechanically checked.
-// lemma NonInterferenceTypes(d:SecDeclarations, c:Command, t:SecType, s0:State, s1:State, r0:CResult, r1:CResult) 
-//     // 0) The results passed in (r0 and r1) match the actual result of evaluating the command, starting from s0 and from s1 respectively
-//     requires EvalCommand(s0, c) == r0
-//     requires EvalCommand(s1, c) == r1
+lemma NonInterferenceTypes(d:SecDeclarations, c:Command, t:SecType, s0:State, s1:State, r0:CResult, r1:CResult) 
+    // 0) The results passed in (r0 and r1) match the actual result of evaluating the command, starting from s0 and from s1 respectively
+    requires EvalCommand(s0, c) == r0
+    requires EvalCommand(s1, c) == r1
 
-//     // 1) Evaluation was successful
-//     requires r0.Success?
-//     requires r1.Success?
+    // 1) Evaluation was successful
+    requires r0.Success?
+    requires r1.Success?
 
-//     // 2) The command is well typed w.r.t. our security type system
-//     requires CommandHasSecType(d, c, t)
+    // 2) The command is well typed w.r.t. our security type system
+    requires CommandHasSecType(d, c, t)
     
-//     // 3) The initial stores agree on the values of all Low variables
-//     requires VarsAgree(d, Low, s0.store, s1.store)
+    // 3) The initial stores agree on the values of all Low variables
+    requires VarsAgree(d, Low, s0.store, s1.store)
 
-//     // 4) The initial IO states agree on the public inputs and the outputs
-//     requires s0.io.in_public == s1.io.in_public && s0.io.output == s1.io.output
+    // 4) The initial IO states agree on the public inputs and the outputs
+    requires s0.io.in_public == s1.io.in_public && s0.io.output == s1.io.output
 
-//     // Conclusion: The output of both executions are identical
-//     //             (note that this holds even when the high variables differ!)
-//     ensures  r0.io.output == r1.io.output
-// {
-//     NonInterferenceTypesInternal(d, c, t, s0, s1, r0, r1);
-// }
+    // Conclusion: The output of both executions are identical
+    //             (note that this holds even when the high variables differ!)
+    ensures  r0.io.output == r1.io.output
+{
+    NonInterferenceTypesInternal(d, c, t, s0, s1, r0, r1);
+}
