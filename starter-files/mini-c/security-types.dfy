@@ -311,7 +311,7 @@ lemma HighCommandPreservesPubIO(d:SecDeclarations, c:Command, s:State, r:CResult
 
 // This is where most of the work of proving non-interference happens.
 // It is an inductive argument over the structure of the program (c).
-lemma NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:State, s1:State, r0:CResult, r1:CResult) 
+lemma {:isolate_assertions} NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:State, s1:State, r0:CResult, r1:CResult) 
     // 0) The results passed in (r0 and r1) match the actual result of evaluating the command, starting from s0 and from s1 respectively
     requires EvalCommand(s0, c) == r0
     requires EvalCommand(s1, c) == r1
@@ -346,9 +346,6 @@ lemma NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:S
     match c {
         case Noop => // Automatic
         case Assign(variable, e) =>
-           
-                
-            
             if ExprHasSecType(d, e, Low) && d[variable] == Low {
                 NonInterfenceTypeExpr(d, s0.store, s1.store, e, Low);
             }
@@ -417,23 +414,12 @@ lemma NonInterferenceTypesInternal(d:SecDeclarations, c:Command, t:SecType, s0:S
         case PrintS(str) => // Automatic 
 
         case PrintE(e) =>
-            // assume{:axiom}(false);
-
-        //.v.b
-            // var value := EvalExpr(e, s0.store);
-            // match value {
-            //     case EFail          => 
-            //     case ESuccess(I(i)) => //NonInterferenceTypesInternal(d, PrintS(Int2String(i)), t, DecrFuel(s0), DecrFuel(s1), r0, r1);
-            //     case ESuccess(B(b)) => 
-            //         if b {
-            //         } else {
-            //         }
-            // }
             if t.Low? && ExprHasSecType(d, e, Low) {
                 NonInterfenceTypeExpr(d, s0.store, s1.store, e, Low);
-            }else{
-                assume{:axiom}(false);
-
+            }
+            else if t.Low? {
+                assert ExprHasSecType(d, e, High);
+                NonInterfenceTypeExpr(d, s0.store, s1.store, e, High);
             }
 
             // TODO: Update this case, so the proof goes through
